@@ -44,20 +44,32 @@ def _normalize_grid(grid,n):
          all(map(_is_power_of_2,grid))) or _raise(TypeError())
         return tuple(int(g) for g in grid)
     except (TypeError, AssertionError):
-        raise ValueError("grid must be a list/tuple of length {n} with values that are power of 2".format(n=n))
+        raise ValueError("grid = {grid} must be a list/tuple of length {n} with values that are power of 2".format(grid=grid, n=n))
+
+
+def _edt_dist_func(anisotropy):
+    try:
+        from edt import edt as edt_func
+        # raise ImportError()
+        dist_func = lambda img: edt_func(np.ascontiguousarray(img>0), anisotropy=anisotropy)
+    except ImportError:
+        dist_func = lambda img: distance_transform_edt(img, sampling=anisotropy)
+    return dist_func
 
 
 def _edt_prob(lbl_img, anisotropy=None):
-    try:
-        from edt import edt as edt_func
-        dist_func = lambda img: edt_func(img>0, anisotropy=anisotropy)
-    except ImportError:
-        dist_func = lambda img: distance_transform_edt(img, sampling=anisotropy)
+    constant_img = lbl_img.min() == lbl_img.max() and lbl_img.flat[0] > 0
+    if constant_img:
+        lbl_img = np.pad(lbl_img, ((1,1),)*lbl_img.ndim, mode='constant')
+        warnings.warn("EDT of constant label image is ill-defined. (Assuming background around it.)")
+    dist_func = _edt_dist_func(anisotropy)
     prob = np.zeros(lbl_img.shape,np.float32)
     for l in (set(np.unique(lbl_img)) - set([0])):
         mask = lbl_img==l
         edt = dist_func(mask)[mask]
         prob[mask] = edt/(np.max(edt)+1e-10)
+    if constant_img:
+        prob = prob[(slice(1,-1),)*lbl_img.ndim].copy()
     return prob
 
 
@@ -67,12 +79,11 @@ def edt_prob(lbl_img, anisotropy=None):
         return tuple(slice(s.start-int(w[0]),s.stop+int(w[1])) for s,w in zip(sl,interior))
     def shrink(interior):
         return tuple(slice(int(w[0]),(-1 if w[1] else None)) for w in interior)
-
-    try:
-        from edt import edt as edt_func
-        dist_func = lambda img: edt_func(img>0, anisotropy=anisotropy)
-    except ImportError:
-        dist_func = lambda img: distance_transform_edt(img, sampling=anisotropy)
+    constant_img = lbl_img.min() == lbl_img.max() and lbl_img.flat[0] > 0
+    if constant_img:
+        lbl_img = np.pad(lbl_img, ((1,1),)*lbl_img.ndim, mode='constant')
+        warnings.warn("EDT of constant label image is ill-defined. (Assuming background around it.)")
+    dist_func = _edt_dist_func(anisotropy)
     objects = find_objects(lbl_img)
     prob = np.zeros(lbl_img.shape,np.float32)
     for i,sl in enumerate(objects,1):
@@ -88,6 +99,8 @@ def edt_prob(lbl_img, anisotropy=None):
         mask = grown_mask[shrink_slice]
         edt = dist_func(grown_mask)[shrink_slice][mask]
         prob[sl][mask] = edt/(np.max(edt)+1e-10)
+    if constant_img:
+        prob = prob[(slice(1,-1),)*lbl_img.ndim].copy()
     return prob
 
 
@@ -159,25 +172,32 @@ def calculate_extents(lbl, func=np.median):
         return func(extents, axis=0)
 
 
-def polyroi_bytearray(x,y,pos=None):
+def polyroi_bytearray(x,y,pos=None,subpixel=True):
     """ Byte array of polygon roi with provided x and y coordinates
         See https://github.com/imagej/imagej1/blob/master/ij/io/RoiDecoder.java
     """
+    import struct
     def _int16(x):
         return int(x).to_bytes(2, byteorder='big', signed=True)
     def _uint16(x):
         return int(x).to_bytes(2, byteorder='big', signed=False)
     def _int32(x):
         return int(x).to_bytes(4, byteorder='big', signed=True)
+    def _float(x):
+        return struct.pack(">f", x)
 
-    x = np.asarray(x).ravel()
-    y = np.asarray(y).ravel()
+    subpixel = bool(subpixel)
+    # add offset since pixel center is at (0.5,0.5) in ImageJ
+    x_raw = np.asarray(x).ravel() + 0.5
+    y_raw = np.asarray(y).ravel() + 0.5
+    x = np.round(x_raw)
+    y = np.round(y_raw)
     assert len(x) == len(y)
     top, left, bottom, right = y.min(), x.min(), y.max(), x.max() # bbox
 
     n_coords = len(x)
     bytes_header = 64
-    bytes_total = bytes_header + n_coords*2*2
+    bytes_total = bytes_header + n_coords*2*2 + subpixel*n_coords*2*4
     B = [0] * bytes_total
     B[ 0: 4] = map(ord,'Iout')   # magic start
     B[ 4: 6] = _int16(227)       # version
@@ -187,6 +207,8 @@ def polyroi_bytearray(x,y,pos=None):
     B[12:14] = _int16(bottom)    # bbox bottom
     B[14:16] = _int16(right)     # bbox right
     B[16:18] = _uint16(n_coords) # number of coordinates
+    if subpixel:
+        B[50:52] = _int16(128)   # subpixel resolution (option flag)
     if pos is not None:
         B[56:60] = _int32(pos)   # position (C, Z, or T)
 
@@ -196,10 +218,19 @@ def polyroi_bytearray(x,y,pos=None):
         B[xs:xs+2] = _int16(_x - left)
         B[ys:ys+2] = _int16(_y - top)
 
+    if subpixel:
+        base1 = bytes_header + n_coords*2*2
+        base2 = base1 + n_coords*4
+        for i,(_x,_y) in enumerate(zip(x_raw,y_raw)):
+            xs = base1 + 4*i
+            ys = base2 + 4*i
+            B[xs:xs+4] = _float(_x)
+            B[ys:ys+4] = _float(_y)
+
     return bytearray(B)
 
 
-def export_imagej_rois(fname, polygons, set_position=True, compression=ZIP_DEFLATED):
+def export_imagej_rois(fname, polygons, set_position=True, subpixel=True, compression=ZIP_DEFLATED):
     """ polygons assumed to be a list of arrays with shape (id,2,c) """
 
     if isinstance(polygons,np.ndarray):
@@ -207,12 +238,12 @@ def export_imagej_rois(fname, polygons, set_position=True, compression=ZIP_DEFLA
 
     fname = Path(fname)
     if fname.suffix == '.zip':
-        fname = Path(fname.stem)
+        fname = fname.with_suffix('')
 
     with ZipFile(str(fname)+'.zip', mode='w', compression=compression) as roizip:
         for pos,polygroup in enumerate(polygons,start=1):
             for i,poly in enumerate(polygroup,start=1):
-                roi = polyroi_bytearray(poly[1],poly[0], pos=(pos if set_position else None))
+                roi = polyroi_bytearray(poly[1],poly[0], pos=(pos if set_position else None), subpixel=subpixel)
                 roizip.writestr('{pos:03d}_{i:03d}.roi'.format(pos=pos,i=i), roi)
 
 

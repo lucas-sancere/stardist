@@ -7,37 +7,63 @@
 
 language: python
 
-branches:
-  only:
-    - master
-    - dev
+# branches:
+#   only:
+#     - master
+#     - dev
 
 env:
-  - TENSORFLOW='tensorflow<2' KERAS='keras'
+  - TENSORFLOW='tensorflow<2' EXTRA=''
 
 matrix:
   include:
-    - os: linux
-      python: 3.7
-      dist: xenial
-    - os: linux
-      python: 3.5
+      # TF 1
     - os: linux
       python: 3.6
+      env: TENSORFLOW='tensorflow<2' EXTRA='' INSTALL_FROM_SOURCE=1
     - os: linux
       python: 3.7
-      dist: xenial
-      env: TENSORFLOW='tensorflow<2' KERAS='keras' ONLY_INSTALL=1
+      env: TENSORFLOW='tensorflow<2' EXTRA='' INSTALL_FROM_SOURCE=1
+      # TF 2
+    - os: linux
+      python: 3.6
+      env: TENSORFLOW='tensorflow' EXTRA='' INSTALL_FROM_SOURCE=1
+    - os: linux
+      python: 3.7
+      env: TENSORFLOW='tensorflow' EXTRA='' INSTALL_FROM_SOURCE=1
+    - os: linux
+      python: 3.8
+      env: TENSORFLOW='tensorflow' EXTRA='' INSTALL_FROM_SOURCE=1
+      #########################################################################
+      ### additional tests in master: install from pypi
+      # TF 1
+    - os: linux
+      python: 3.6
+      if: branch = master
+    - os: linux
+      python: 3.7
+      if: branch = master
+      # TF 2
+    - os: linux
+      python: 3.6
+      env: TENSORFLOW='tensorflow' EXTRA=''
+      if: branch = master
+    - os: linux
+      python: 3.7
+      env: TENSORFLOW='tensorflow' EXTRA=''
+      if: branch = master
+    - os: linux
+      python: 3.8
+      env: TENSORFLOW='tensorflow' EXTRA=''
+      if: branch = master
 
 install:
-  - pip install $TENSORFLOW $KERAS
-  - if [ -z $ONLY_INSTALL ]; then
+  - pip install $TENSORFLOW $EXTRA
+  - if [[ -n $INSTALL_FROM_SOURCE ]]; then
        pip install .;
     else
        pip install stardist;
     fi;
 
 script:
-  - if [ -z $ONLY_INSTALL ]; then
-       pytest -v -s --durations=50 -m "not gpu";
-    fi;
+  - pytest -v --durations=50 -m "not gpu";
