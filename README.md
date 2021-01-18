@@ -1,6 +1,6 @@
 [![PyPI version](https://badge.fury.io/py/stardist.svg)](https://pypi.org/project/stardist)
-[![Linux build status](https://travis-ci.com/mpicbg-csbd/stardist.svg?branch=master)](https://travis-ci.com/mpicbg-csbd/stardist)
-[![Windows build status](https://ci.appveyor.com/api/projects/status/gyu127aqc8y5av79/branch/master?svg=true)](https://ci.appveyor.com/project/UweSchmidt/stardist/branch/master)
+[![Test](https://github.com/mpicbg-csbd/stardist/workflows/Test/badge.svg)](https://github.com/mpicbg-csbd/stardist/actions?query=workflow%3ATest)
+[![Test (PyPI)](https://github.com/mpicbg-csbd/stardist/workflows/Test%20(PyPI)/badge.svg)](https://github.com/mpicbg-csbd/stardist/actions?query=workflow%3A%22Test+%28PyPI%29%22)
 [![Image.sc forum](https://img.shields.io/badge/dynamic/json.svg?label=forum&url=https%3A%2F%2Fforum.image.sc%2Ftags%2Fstardist.json&query=%24.topic_list.tags.0.topic_count&colorB=brightgreen&suffix=%20topics&logo=data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAA4AAAAOCAYAAAAfSC3RAAABPklEQVR42m3SyyqFURTA8Y2BER0TDyExZ+aSPIKUlPIITFzKeQWXwhBlQrmFgUzMMFLKZeguBu5y+//17dP3nc5vuPdee6299gohUYYaDGOyyACq4JmQVoFujOMR77hNfOAGM+hBOQqB9TjHD36xhAa04RCuuXeKOvwHVWIKL9jCK2bRiV284QgL8MwEjAneeo9VNOEaBhzALGtoRy02cIcWhE34jj5YxgW+E5Z4iTPkMYpPLCNY3hdOYEfNbKYdmNngZ1jyEzw7h7AIb3fRTQ95OAZ6yQpGYHMMtOTgouktYwxuXsHgWLLl+4x++Kx1FJrjLTagA77bTPvYgw1rRqY56e+w7GNYsqX6JfPwi7aR+Y5SA+BXtKIRfkfJAYgj14tpOF6+I46c4/cAM3UhM3JxyKsxiOIhH0IO6SH/A1Kb1WBeUjbkAAAAAElFTkSuQmCC)](https://forum.image.sc/tags/stardist)
 
 # *StarDist* - Object Detection with Star-convex Shapes 
@@ -77,7 +77,7 @@ Currently we provide some pretrained models in 2D that might already be suitable
 | key | Modality (Staining) | Image format | Example Image    | Description  | 
 | :-- | :-: | :-:| :-:| :-- |
 | `2D_versatile_fluo` `2D_paper_dsb2018`| Fluorescence (nuclear marker) | 2D single channel| <img src="https://github.com/mpicbg-csbd/stardist/raw/master/images/example_fluo.jpg" title="example image fluo" width="120px" align="center">       | *Versatile (fluorescent nuclei)* and *DSB 2018 (from StarDist 2D paper)* that were both trained on a [ subset of the DSB 2018 nuclei segmentation challenge dataset](https://github.com/mpicbg-csbd/stardist/releases/download/0.1.0/dsb2018.zip). | 
-|`2D_versatile_he` | Brightfield (H&E) | 2D RGB  | <img src="https://github.com/mpicbg-csbd/stardist/raw/master/images/example_histo.jpg" title="example image histo" width="120px" align="center">       | *Versatile (H&E nuclei)* that was trained on images from the [MoNuSeg 2018 training data](https://monuseg.grand-challenge.org/Data/) and the [TCGA archive](http://cancergenome.nih.gov/). |
+|`2D_versatile_he` | Brightfield (H&E) | 2D RGB  | <img src="https://github.com/mpicbg-csbd/stardist/raw/master/images/example_histo.jpg" title="example image histo" width="120px" align="center">       | *Versatile (H&E nuclei)* that was trained on images from the [MoNuSeg 2018 training data](https://monuseg.grand-challenge.org/Data/) and the [TNBC dataset from Naylor et al. (2018)](https://zenodo.org/record/1175282#.X6mwG9so-CN). |
 
 
 You can access these pretrained models from `stardist.models.StarDist2D`
